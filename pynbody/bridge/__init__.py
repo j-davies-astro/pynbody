@@ -61,7 +61,7 @@ class Bridge(object):
 
     def match_catalog(self, min_index=1, max_index=30, threshold=0.5,
                       groups_1 = None, groups_2 = None,
-                      use_family = None):
+                      use_family = None, most_bound_fraction=None):
         """Given a Halos object groups_1, a Halos object groups_2 and a
         Bridge object connecting the two parent simulations, this identifies
         the most likely ID's in groups_2 of the objects specified in groups_1.
@@ -92,9 +92,13 @@ class Bridge(object):
         This can be useful e.g. if matching between two different simulations where
         the relationship between DM particles is known, but perhaps the relationship
         between star particles is random.
+        
+        If most_bound_fraction is specified, matches are identified based on the most tightly-bound
+        particles at the start of the bridge. most_bound_fraction should be a float
+        specifying the fraction of the total number of particles to match with.
 
         """
-        fuzzy_matches = self.fuzzy_match_catalog(min_index, max_index, threshold, groups_1, groups_2, use_family)
+        fuzzy_matches = self.fuzzy_match_catalog(min_index, max_index, threshold, groups_1, groups_2, use_family=use_family, most_bound_fraction=most_bound_fraction)
 
         identification = np.zeros(max_index+1,dtype=int)
 
@@ -109,7 +113,7 @@ class Bridge(object):
         return identification
 
     def fuzzy_match_catalog(self, min_index=1, max_index=30, threshold=0.01,
-                            groups_1 = None, groups_2 = None, use_family=None, only_family=None):
+                            groups_1 = None, groups_2 = None, use_family=None, only_family=None,most_bound_fraction=None):
         """fuzzy_match_catalog returns, for each halo in groups_1, a list of possible
         identifications in groups_2, along with the fraction of particles in common
         between the two.
@@ -120,8 +124,7 @@ class Bridge(object):
 
         If no identification is found, the entry is the empty list [].
         """
-
-        transfer_matrix = self.catalog_transfer_matrix(min_index,max_index,groups_1,groups_2,use_family,only_family)
+        transfer_matrix = self.catalog_transfer_matrix(min_index,max_index,groups_1,groups_2,use_family,only_family,most_bound_fraction)
 
         output = [[]]*min_index
         for row in transfer_matrix:
@@ -137,7 +140,7 @@ class Bridge(object):
 
         return output
 
-    def catalog_transfer_matrix(self, min_index=1, max_index=30, groups_1=None, groups_2=None,use_family=None,only_family=None):
+    def catalog_transfer_matrix(self, min_index=1, max_index=30, groups_1=None, groups_2=None,use_family=None,only_family=None,most_bound_fraction=None):
         """Return a max_index x max_index matrix with the number of particles transferred from
         the row group in groups_1 to the column group in groups_2.
 
@@ -154,6 +157,36 @@ class Bridge(object):
             groups_2 = end.halos()
         else:
             assert groups_2.base.ancestor is end.ancestor
+
+        if most_bound_fraction is not None:
+            from ..snapshot import gadgethdf
+            assert most_bound_fraction < 1.
+            
+            if 'phi' in start.loadable_keys():
+                bound_field = 'phi'
+            else:
+                if isinstance(start,gadgethdf.EagleLikeHDFSnap):
+                    if 'ParticleBindingEnergy' in start.loadable_keys():
+                        bound_field = 'ParticleBindingEnergy'
+                    else:
+                        raise KeyError("Field 'ParticleBindingEnergy' not found in EagleLikeHDFSnap")
+                else:
+                    raise KeyError("Field 'phi' not found in SimSnap")
+                
+            start['mask'] = np.zeros(len(start),dtype=bool)
+            for g in range(len(groups_1)):
+                
+                if 'SubGroupNumber' in start.loadable_keys() and g == 0: # halo 0 does not exist in SUBFIND catalogues
+                    continue
+                
+                group = groups_1[g]
+                
+                if bound_field == 'ParticleBindingEnergy': # Particles with the highest binding energies are the most bound
+                    group['mask'][np.argsort(group[bound_field])[-int(len(group)*most_bound_fraction):]] = True
+                else: # Particles with the lowest phi are the most bound
+                    group['mask'][np.argsort(group[bound_field])[:int(len(group)*most_bound_fraction)]] = True
+            
+            start = start[start['mask']==True]
 
         if use_family:
             end = end[use_family]
