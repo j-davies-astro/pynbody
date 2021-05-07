@@ -174,18 +174,12 @@ class Bridge(object):
                     raise KeyError("Field 'phi' not found in SimSnap")
                 
             start['mask'] = np.zeros(len(start),dtype=bool)
-            for g in range(len(groups_1)):
-                
-                if 'SubGroupNumber' in start.loadable_keys() and g == 0: # halo 0 does not exist in SUBFIND catalogues
-                    continue
-                
-                group = groups_1[g]
-                
+            for i in np.unique(groups_1.get_group_array()):
+                group = groups_1[i]
                 if bound_field == 'ParticleBindingEnergy': # Particles with the highest binding energies are the most bound
                     group['mask'][np.argsort(group[bound_field])[-int(len(group)*most_bound_fraction):]] = True
                 else: # Particles with the lowest phi are the most bound
                     group['mask'][np.argsort(group[bound_field])[:int(len(group)*most_bound_fraction)]] = True
-            
             start = start[start['mask']==True]
 
         if use_family:
