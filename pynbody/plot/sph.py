@@ -92,13 +92,26 @@ def velocity_image(sim, width="10 kpc", vector_color='black', edgecolor='black',
     """
 
     subplot = kwargs.get('subplot', False)
-    av_z = kwargs.get('av_z',None)
     if subplot:
         p = subplot
     else:
         import matplotlib.pylab as p
 
     vx_name, vy_name, _ = sim._array_name_ND_to_1D(vector_qty)
+
+    # New - if the SPH image is projected, we should show a mass-weighted mean velocity rather than a slice
+    is_projected = False
+    units = kwargs.get('units', None)
+    if isinstance(units, str):
+        units = _units.Unit(units)
+    qty = kwargs.get('qty', None)
+    if units is not None:
+        is_projected = _units_imply_projection(sim, qty, units)
+
+    if is_projected:
+        av_z = 'rho'
+    else:
+        av_z = kwargs.get('av_z',None)
 
     vx = image(sim, qty=vx_name, width=width, log=False,
                resolution=vector_resolution, noplot=True,av_z=av_z)
