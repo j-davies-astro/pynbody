@@ -519,12 +519,14 @@ class GadgetHDFSnap(SimSnap):
                    'U_T': time_unit, '[K]': units.K,
                    'SEC_PER_YEAR': units.yr, 'SOLAR_MASS': units.Msol,
                    'solar masses / yr': units.Msol/units.yr,
-                   'U_E': energy_unit}
+                   'U_E': energy_unit,
+                   'BH smoothing': dist_unit, 'Black hole energy reservoir': energy_unit}
         # Last two units are to catch occasional arrays like StarFormationRate which don't
         # follow the patter of U_ units unfortunately
         cgsvar = {'U_M': 'g', 'SOLAR_MASS': 'g', 'U_T': 's',
                   'SEC_PER_YEAR': 's', 'U_V': 'cm s**-1', 'U_L': 'cm', '[K]': 'K',
-                  'solar masses / yr': 'g s**-1', 'U_E': 'erg'}
+                  'solar masses / yr': 'g s**-1', 'U_E': 'erg',
+                  'BH smoothing': 'cm', 'Black hole energy reservoir': 'erg'}
 
         self._hdf_cgsvar = cgsvar
         self._hdf_unitvar = unitvar
