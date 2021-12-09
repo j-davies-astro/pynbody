@@ -109,7 +109,7 @@ def velocity_image(sim, width="10 kpc", vector_color='black', edgecolor='black',
         is_projected = _units_imply_projection(sim, qty, units)
 
     if is_projected:
-        av_z = 'rho'
+        av_z = 'mass'
     else:
         av_z = kwargs.get('av_z',None)
 
